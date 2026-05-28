@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>
+Victor Gupta Live Analytics
+</title>
+
+<link rel="stylesheet"
+href="admin.css">
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+</head>
+
+<body>
+
+<!-- LOGIN -->
+
+<div class="login-container"
+id="loginContainer">
+
+    <div class="login-box">
+
+        <h1>
+            Admin Access
+        </h1>
+
+        <input type="password"
+        id="password"
+        placeholder="Enter Passkey">
+
+        <button onclick="login()">
+            Unlock Dashboard
+        </button>
+
+    </div>
+
+</div>
+
+<!-- DASHBOARD -->
+
+<div class="dashboard hidden"
+id="dashboard">
+
+    <header>
+
+        <h1>
+            LIVE WEBSITE ANALYTICS
+        </h1>
+
+        <button onclick="logout()">
+            Logout
+        </button>
+
+    </header>
+
+    <!-- LIVE STATUS -->
+
+    <div class="live-status">
+
+        <div class="pulse"></div>
+
+        <span>
+            Live Tracking Active
+        </span>
+
+    </div>
+
+    <!-- STATS -->
+
+    <div class="stats-grid">
+
+        <div class="stat-card">
+
+            <h2 id="visitCount">
+                0
+            </h2>
+
+            <p>
+                Total Visits
+            </p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h2 id="downloadCount">
+                0
+            </h2>
+
+            <p>
+                Downloads
+            </p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h2 id="onlineUsers">
+                0
+            </h2>
+
+            <p>
+                Active Users
+            </p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h2 id="avgTime">
+                0s
+            </h2>
+
+            <p>
+                Avg Session Time
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- CHARTS -->
+
+    <div class="chart-grid">
+
+        <div class="chart-card">
+
+            <h3>
+                Downloads
+            </h3>
+
+            <canvas id="downloadsChart"></canvas>
+
+        </div>
+
+        <div class="chart-card">
+
+            <h3>
+                Reading Time
+            </h3>
+
+            <canvas id="readingChart"></canvas>
+
+        </div>
+
+        <div class="chart-card">
+
+            <h3>
+                Device Types
+            </h3>
+
+            <canvas id="deviceChart"></canvas>
+
+        </div>
+
+        <div class="chart-card">
+
+            <h3>
+                Visits Timeline
+            </h3>
+
+            <canvas id="visitChart"></canvas>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+// =========================
+// FIREBASE CONFIG
+// =========================
+
+const firebaseConfig = {
+
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+
+// =========================
+// LOGIN
+// =========================
+
+function login(){
+
+    const password =
+    document.getElementById("password").value;
+
+    if(password === "PowerOfThought"){
+
+        document.getElementById(
+            "loginContainer"
+        ).classList.add("hidden");
+
+        document.getElementById(
+            "dashboard"
+        ).classList.remove("hidden");
+
+        initializeRealtimeDashboard();
+
+    }
+    else{
+
+        alert("Incorrect Passkey");
+
+    }
+
+}
+
+// =========================
+// LOGOUT
+// =========================
+
+function logout(){
+
+    location.reload();
+
+}
+
+// =========================
+// CHART VARIABLES
+// =========================
+
+let downloadsChart;
+let readingChart;
+let deviceChart;
+let visitChart;
+
+// =========================
+// REALTIME DASHBOARD
+// =========================
+
+function initializeRealtimeDashboard(){
+
+    initializeCharts();
+
+    realtimeVisits();
+
+    realtimeDownloads();
+
+    realtimeDevices();
+
+    realtimeReading();
+
+    realtimeSessions();
+
+}
+
+// =========================
+// INITIALIZE EMPTY CHARTS
+// =========================
+
+function initializeCharts(){
+
+    downloadsChart =
+    new Chart(
+
+        document.getElementById(
+            "downloadsChart"
+        ),
+
+        {
+
+            type:"bar",
+
+            data:{
+
+                labels:[],
+
+                datasets:[{
+
+                    label:"Downloads",
+
+                    data:[]
+
+                }]
+
+            }
+
+        }
+
+    );
+
+    readingChart =
+    new Chart(
+
+        document.getElementById(
+            "readingChart"
+        ),
+
+        {
+
+            type:"pie",
+
+            data:{
+
+                labels:[],
+
+                datasets:[{
+
+                    data:[]
+
+                }]
+
+            }
+
+        }
+
+    );
+
+    deviceChart =
+    new Chart(
+
+        document.getElementById(
+            "deviceChart"
+        ),
+
+        {
+
+            type:"doughnut",
+
+            data:{
+
+                labels:[],
+
+                datasets:[{
+
+                    data:[]
+
+                }]
+
+            }
+
+        }
+
+    );
+
+    visitChart =
+    new Chart(
+
+        document.getElementById(
+            "visitChart"
+        ),
+
+        {
+
+            type:"line",
+
+            data:{
+
+                labels:[],
+
+                datasets:[{
+
+                    label:"Visits",
+
+                    data:[]
+
+                }]
+
+            }
+
+        }
+
+    );
+
+}
+
+// =========================
+// LIVE VISITS
+// =========================
+
+function realtimeVisits(){
+
+    db.collection("visits")
+    .onSnapshot(snapshot => {
+
+        document.getElementById(
+            "visitCount"
+        ).innerText =
+        snapshot.size;
+
+        const visitMap = {};
+
+        snapshot.forEach(doc => {
+
+            const data = doc.data();
+
+            if(data.timestamp){
+
+                const date =
+                new Date(
+                    data.timestamp.seconds * 1000
+                ).toLocaleDateString();
+
+                visitMap[date] =
+                (visitMap[date] || 0) + 1;
+
+            }
+
+        });
+
+        visitChart.data.labels =
+        Object.keys(visitMap);
+
+        visitChart.data.datasets[0].data =
+        Object.values(visitMap);
+
+        visitChart.update();
+
+    });
+
+}
+
+// =========================
+// LIVE DOWNLOADS
+// =========================
+
+function realtimeDownloads(){
+
+    db.collection("downloads")
+    .onSnapshot(snapshot => {
+
+        document.getElementById(
+            "downloadCount"
+        ).innerText =
+        snapshot.size;
+
+        const downloadMap = {};
+
+        snapshot.forEach(doc => {
+
+            const file =
+            doc.data().file;
+
+            downloadMap[file] =
+            (downloadMap[file] || 0) + 1;
+
+        });
+
+        downloadsChart.data.labels =
+        Object.keys(downloadMap);
+
+        downloadsChart.data.datasets[0].data =
+        Object.values(downloadMap);
+
+        downloadsChart.update();
+
+    });
+
+}
+
+// =========================
+// LIVE DEVICES
+// =========================
+
+function realtimeDevices(){
+
+    db.collection("devices")
+    .onSnapshot(snapshot => {
+
+        const deviceMap = {};
+
+        snapshot.forEach(doc => {
+
+            const type =
+            doc.data().type;
+
+            deviceMap[type] =
+            (deviceMap[type] || 0) + 1;
+
+        });
+
+        document.getElementById(
+            "onlineUsers"
+        ).innerText =
+        snapshot.size;
+
+        deviceChart.data.labels =
+        Object.keys(deviceMap);
+
+        deviceChart.data.datasets[0].data =
+        Object.values(deviceMap);
+
+        deviceChart.update();
+
+    });
+
+}
+
+// =========================
+// LIVE READING TIME
+// =========================
+
+function realtimeReading(){
+
+    db.collection("readingTime")
+    .onSnapshot(snapshot => {
+
+        const readingMap = {};
+
+        snapshot.forEach(doc => {
+
+            const section =
+            doc.data().section;
+
+            const time =
+            doc.data().milliseconds / 1000;
+
+            readingMap[section] =
+            (readingMap[section] || 0) + time;
+
+        });
+
+        readingChart.data.labels =
+        Object.keys(readingMap);
+
+        readingChart.data.datasets[0].data =
+        Object.values(readingMap);
+
+        readingChart.update();
+
+    });
+
+}
+
+// =========================
+// LIVE SESSION TIME
+// =========================
+
+function realtimeSessions(){
+
+    db.collection("sessionTimes")
+    .onSnapshot(snapshot => {
+
+        let total = 0;
+
+        snapshot.forEach(doc => {
+
+            total +=
+            doc.data().milliseconds;
+
+        });
+
+        if(snapshot.size > 0){
+
+            const avg =
+            Math.floor(
+                total /
+                snapshot.size /
+                1000
+            );
+
+            document.getElementById(
+                "avgTime"
+            ).innerText =
+            avg + "s";
+
+        }
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
